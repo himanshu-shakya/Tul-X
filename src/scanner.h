@@ -18,5 +18,6 @@ typedef struct {
 
 Scanner makeScanner(const char* source);
 void scanTokens(Scanner* scanner);
+void freeScanner(Scanner* scanner);
 
-#endif
+#endif /* SCANNER_H */

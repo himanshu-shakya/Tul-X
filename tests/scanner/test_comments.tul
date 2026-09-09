@@ -1,0 +1,4 @@
+// Single line comment
+var x = 42; // Inline comment
+// Another comment
+print x;

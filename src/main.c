@@ -33,10 +33,7 @@ static void run(const char* source) {
         printToken(scanner.tokens[i]);
     }
 
-    if (scanner.tokens != NULL) {
-        free(scanner.tokens);
-        scanner.tokens = NULL;
-    }
+    freeScanner(&scanner);
 }
 
 /* ============================================================================

@@ -14,31 +14,44 @@ if [ ! -f "$EXECUTABLE" ]; then
     make
 fi
 
-# Function to run a test
 run_test() {
     local test_name="$1"
     local input_file="$2"
     local expected_status="$3"
 
-    echo -n "Running $test_name... "
+    printf "Running %-45s ... " "$test_name"
     set +e
     $EXECUTABLE "$input_file" > /dev/null 2>&1
     local status=$?
     set -e
 
     if [ "$status" -eq "$expected_status" ]; then
-        echo "PASSED [exit code: $status]"
+        echo "PASSED [code: $status]"
         PASSED=$((PASSED + 1))
     else
-        echo "FAILED (Expected exit code $expected_status, got $status)"
+        echo "FAILED (Expected $expected_status, got $status)"
         FAILED=$((FAILED + 1))
     fi
 }
 
-# Run sample tests
+# 1. Integration / Example Tests
 if [ -f "examples/hello.tul" ]; then
     run_test "examples/hello.tul" "examples/hello.tul" 0
 fi
+
+# 2. Scanner Tests (Expected exit code: 0)
+for test_file in tests/scanner/*.tul; do
+    if [ -f "$test_file" ]; then
+        run_test "$test_file" "$test_file" 0
+    fi
+done
+
+# 3. Error Tests (Expected exit code: 65 EX_DATAERR)
+for test_file in tests/errors/*.tul; do
+    if [ -f "$test_file" ]; then
+        run_test "$test_file" "$test_file" 65
+    fi
+done
 
 echo "=========================================="
 echo " Test Results: $PASSED Passed, $FAILED Failed"

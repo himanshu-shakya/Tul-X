@@ -1,12 +1,11 @@
-#include <stdlib.h>
-#include <string.h>
-#include <stdbool.h>
-
 #include "scanner.h"
+#include "common.h"
 #include "error.h"
 #include "keywords.h"
 
-/* ---------- helpers ---------- */
+/* ============================================================================
+ * Internal Scanner Helper Functions
+ * ============================================================================ */
 
 static bool isAtEnd(Scanner* s) {
     return s->current >= s->length;
@@ -17,7 +16,8 @@ static char advance(Scanner* s) {
 }
 
 static char peek(Scanner* s) {
-    return isAtEnd(s) ? '\0' : s->source[s->current];
+    if (isAtEnd(s)) return '\0';
+    return s->source[s->current];
 }
 
 static char peekNext(Scanner* s) {
@@ -46,16 +46,19 @@ static bool isAlphaNumeric(char c) {
     return isAlpha(c) || isDigit(c);
 }
 
-/* ---------- token storage ---------- */
+/* ============================================================================
+ * Token Storage (Dynamic Array)
+ * ============================================================================ */
 
-static void addToken(
-    Scanner* s,
-    TokenType type,
-    void* literal
-) {
+static void addToken(Scanner* s, TokenType type, void* literal) {
     if (s->count >= s->capacity) {
         s->capacity = s->capacity < 8 ? 8 : s->capacity * 2;
-        s->tokens = realloc(s->tokens, sizeof(Token) * s->capacity);
+        Token* newTokens = (Token*)realloc(s->tokens, sizeof(Token) * s->capacity);
+        if (!newTokens) {
+            fprintf(stderr, "Out of memory in scanner token buffer.\n");
+            exit(EX_SOFTWARE);
+        }
+        s->tokens = newTokens;
     }
 
     s->tokens[s->count++] = makeToken(
@@ -67,11 +70,15 @@ static void addToken(
     );
 }
 
-/* ---------- literals ---------- */
+/* ============================================================================
+ * Literal Scanning
+ * ============================================================================ */
 
 static void string(Scanner* s) {
     while (peek(s) != '"' && !isAtEnd(s)) {
-        if (peek(s) == '\n') s->line++;
+        if (peek(s) == '\n') {
+            s->line++;
+        }
         advance(s);
     }
 
@@ -80,10 +87,17 @@ static void string(Scanner* s) {
         return;
     }
 
-    advance(s); // closing "
+    /* Consume the closing quote */
+    advance(s);
 
+    /* Extract string contents excluding surrounding quotes */
     int length = s->current - s->start - 2;
-    char* value = malloc(length + 1);
+    char* value = (char*)malloc(length + 1);
+    if (!value) {
+        fprintf(stderr, "Out of memory while allocating string literal.\n");
+        exit(EX_SOFTWARE);
+    }
+
     memcpy(value, s->source + s->start + 1, length);
     value[length] = '\0';
 
@@ -91,21 +105,34 @@ static void string(Scanner* s) {
 }
 
 static void number(Scanner* s) {
-    while (isDigit(peek(s))) advance(s);
-
-    if (peek(s) == '.' && isDigit(peekNext(s))) {
+    while (isDigit(peek(s))) {
         advance(s);
-        while (isDigit(peek(s))) advance(s);
     }
 
-    double* value = malloc(sizeof(double));
-    *value = strtod(s->source + s->start, NULL);
+    /* Look for fractional part (decimal point followed by at least one digit) */
+    if (peek(s) == '.' && isDigit(peekNext(s))) {
+        /* Consume the '.' */
+        advance(s);
 
+        while (isDigit(peek(s))) {
+            advance(s);
+        }
+    }
+
+    double* value = (double*)malloc(sizeof(double));
+    if (!value) {
+        fprintf(stderr, "Out of memory while allocating number literal.\n");
+        exit(EX_SOFTWARE);
+    }
+
+    *value = strtod(s->source + s->start, NULL);
     addToken(s, TOKEN_NUMBER, value);
 }
 
 static void identifier(Scanner* s) {
-    while (isAlphaNumeric(peek(s))) advance(s);
+    while (isAlphaNumeric(peek(s))) {
+        advance(s);
+    }
 
     TokenType type = identifierType(
         s->source + s->start,
@@ -115,12 +142,15 @@ static void identifier(Scanner* s) {
     addToken(s, type, NULL);
 }
 
-/* ---------- scan one token ---------- */
+/* ============================================================================
+ * Scan Single Token
+ * ============================================================================ */
 
 static void scanToken(Scanner* s) {
     char c = advance(s);
 
     switch (c) {
+        /* Single-character tokens */
         case '(': addToken(s, TOKEN_LEFT_PAREN, NULL); break;
         case ')': addToken(s, TOKEN_RIGHT_PAREN, NULL); break;
         case '{': addToken(s, TOKEN_LEFT_BRACE, NULL); break;
@@ -132,65 +162,71 @@ static void scanToken(Scanner* s) {
         case ';': addToken(s, TOKEN_SEMICOLON, NULL); break;
         case '*': addToken(s, TOKEN_STAR, NULL); break;
 
-        case '!': {
-            bool eq = match(s, '=');
-            addToken(s, eq ? TOKEN_BANG_EQUAL : TOKEN_BANG, NULL);
+        /* One or two character tokens */
+        case '!':
+            addToken(s, match(s, '=') ? TOKEN_BANG_EQUAL : TOKEN_BANG, NULL);
             break;
-        }
 
-        case '=': {
-            bool eq = match(s, '=');
-            addToken(s, eq ? TOKEN_EQUAL_EQUAL : TOKEN_EQUAL, NULL);
+        case '=':
+            addToken(s, match(s, '=') ? TOKEN_EQUAL_EQUAL : TOKEN_EQUAL, NULL);
             break;
-        }
 
-        case '<': {
-            bool eq = match(s, '=');
-            addToken(s, eq ? TOKEN_LESS_EQUAL : TOKEN_LESS, NULL);
+        case '<':
+            addToken(s, match(s, '=') ? TOKEN_LESS_EQUAL : TOKEN_LESS, NULL);
             break;
-        }
 
-        case '>': {
-            bool eq = match(s, '=');
-            addToken(s, eq ? TOKEN_GREATER_EQUAL : TOKEN_GREATER, NULL);
+        case '>':
+            addToken(s, match(s, '=') ? TOKEN_GREATER_EQUAL : TOKEN_GREATER, NULL);
             break;
-        }
 
+        /* Slashes and Comments */
         case '/':
             if (match(s, '/')) {
-                while (peek(s) != '\n' && !isAtEnd(s)) advance(s);
+                /* A single-line comment goes until the end of the line */
+                while (peek(s) != '\n' && !isAtEnd(s)) {
+                    advance(s);
+                }
             } else {
                 addToken(s, TOKEN_SLASH, NULL);
             }
             break;
 
+        /* Whitespace characters */
         case ' ':
         case '\r':
         case '\t':
+            /* Ignore whitespace */
             break;
 
         case '\n':
             s->line++;
             break;
 
+        /* String Literals */
         case '"':
             string(s);
             break;
 
         default:
-            if (isDigit(c)) number(s);
-            else if (isAlpha(c)) identifier(s);
-            else error(s->line, "Unexpected character.");
+            if (isDigit(c)) {
+                number(s);
+            } else if (isAlpha(c)) {
+                identifier(s);
+            } else {
+                error(s->line, "Unexpected character.");
+            }
             break;
     }
 }
 
-/* ---------- public API ---------- */
+/* ============================================================================
+ * Public Scanner API
+ * ============================================================================ */
 
 Scanner makeScanner(const char* source) {
     Scanner s;
     s.source = source;
-    s.length = strlen(source);
+    s.length = (int)strlen(source);
     s.start = 0;
     s.current = 0;
     s.line = 1;
@@ -206,5 +242,23 @@ void scanTokens(Scanner* s) {
         scanToken(s);
     }
 
+    /* Append sentinel TOKEN_EOF */
+    s->start = s->current;
     addToken(s, TOKEN_EOF, NULL);
+}
+
+void freeScanner(Scanner* s) {
+    if (s == NULL || s->tokens == NULL) return;
+
+    for (int i = 0; i < s->count; i++) {
+        if (s->tokens[i].literal != NULL) {
+            free(s->tokens[i].literal);
+            s->tokens[i].literal = NULL;
+        }
+    }
+
+    free(s->tokens);
+    s->tokens = NULL;
+    s->count = 0;
+    s->capacity = 0;
 }

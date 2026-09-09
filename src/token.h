@@ -19,6 +19,7 @@ Token makeToken(
     int line
 );
 
+const char* tokenTypeToString(TokenType type);
 void printToken(Token token);
 
-#endif
+#endif /* TOKEN_H */
