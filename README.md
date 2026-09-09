@@ -1,85 +1,116 @@
 <div align="center">
-  <h1>Tul-X</h1>
-  <p>A lightweight interpreter-based programming language built in C.</p>
-  <p><i>Demonstrating core concepts of compiler & interpreter design from scratch.</i></p>
+  <h1>TUL-X</h1>
+  <p>A lightweight interpreter-based programming language built in pure C.</p>
+  <p><i>Crafted from first principles, inspired by Robert Nystrom's <b>Crafting Interpreters</b>.</i></p>
 
   <br/>
 
   ![C](https://img.shields.io/badge/C-00599C?style=flat-square&logo=c&logoColor=white)
   ![Interpreter](https://img.shields.io/badge/Interpreter-Design-black?style=flat-square)
   ![AST](https://img.shields.io/badge/AST-Generation-6e40c9?style=flat-square)
-  ![Status](https://img.shields.io/badge/Status-Active-brightgreen?style=flat-square)
+  ![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)
 </div>
 
 ---
 
-## What is Tul-X?
+## 🌟 Overview
 
-Tul-X is a handcrafted programming language interpreter written in pure C. It walks through every stage of language processing — from raw source text all the way to evaluated output — making it a clean, educational implementation of how real languages work under the hood.
+**TUL-X** is an educational interpreter designed to master compiler design, interpreters, runtime environments, memory management, and systems programming in C from first principles.
+
+### Key Goals
+- **From Source to Execution**: Understand lexical scanning, recursive descent parsing, Abstract Syntax Trees (AST), dynamic type evaluation, lexical scoping, closures, and object-oriented runtime structures.
+- **Mastery in C**: Safe manual memory management (`malloc`, `free`, tagged unions, pointers, function pointers), zero memory leaks, and sanitization with `AddressSanitizer`.
+- **Interview Readiness**: Curated notes, conceptual checkpoints, and architectural knowledge targeting technical software engineering interviews (e.g., Accenture, FAANG).
 
 ---
 
-## How It Works
+## 🏗️ Execution Pipeline
 
+```mermaid
+flowchart LR
+    Source["Source Code (.tul)"] --> Scanner["1. Scanner / Lexer"]
+    Scanner --> Tokens["Token Stream"]
+    Tokens --> Parser["2. Parser (Recursive Descent)"]
+    Parser --> AST["Abstract Syntax Tree (AST)"]
+    AST --> Interpreter["3. Tree-Walk Interpreter"]
+    Interpreter --> Environment["Environment / Scope"]
+    Interpreter --> Output["Output / Result"]
 ```
-Source Code  ──▶  Lexer  ──▶  Tokens  ──▶  Parser  ──▶  AST  ──▶  Interpreter  ──▶  Output
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+- A C99-compliant compiler (`gcc` or `clang`)
+- `make`
+- macOS / Linux / WSL
+
+### Building the Project
+
+```bash
+# Standard optimized build
+make
+
+# Debug build with AddressSanitizer and symbols
+make debug
+
+# Clean build artifacts
+make clean
 ```
 
-| Step | Component | Description |
-|------|-----------|-------------|
-| 1 | **Scanner / Lexer** | Converts raw source code into a stream of tokens |
-| 2 | **Parser** | Builds an Abstract Syntax Tree using recursive descent |
-| 3 | **Interpreter** | Walks and evaluates the AST node by node |
-| 4 | **Output** | Prints the final evaluated result |
+### Running TUL-X
+
+#### 1. Interactive REPL Mode
+```bash
+./tulx
+```
+```text
+==========================================
+  TUL-X Interpreter (Crafting Interpreters)
+  Type 'exit' or press Ctrl+D to quit.
+==========================================
+tul-x > var message = "Hello, TUL-X!";
+tul-x > print message;
+```
+
+#### 2. Execute a Script File
+```bash
+./tulx examples/hello.tul
+```
+
+#### 3. Run Automated Tests
+```bash
+make test
+```
 
 ---
 
-## Features
+## 📋 Implementation Roadmap
 
-<table>
-  <tr>
-    <td valign="top" width="50%">
-      <h3>🔍 Lexical Analysis</h3>
-      Tokenizes raw source code into meaningful symbols for the parser to consume.
-    </td>
-    <td valign="top" width="50%">
-      <h3>🌳 AST Generation</h3>
-      Builds a structured Abstract Syntax Tree that represents program logic hierarchically.
-    </td>
-  </tr>
-  <tr>
-    <td valign="top" width="50%">
-      <h3>⚙️ Recursive Descent Parser</h3>
-      Parses tokens using a hand-written recursive descent strategy — no external tools.
-    </td>
-    <td valign="top" width="50%">
-      <h3>🧮 Expression Evaluation</h3>
-      Evaluates expressions with correct operator precedence and associativity.
-    </td>
-  </tr>
-  <tr>
-    <td valign="top" width="50%">
-      <h3>🧱 Modular Architecture</h3>
-      Clean separation between scanning, parsing, and evaluation layers.
-    </td>
-    <td valign="top" width="50%">
-      <h3>🚨 Error Handling</h3>
-      Basic error detection and reporting during lexing and parsing stages.
-    </td>
-  </tr>
-</table>
+- [x] **Phase 0 — Project Setup** *(Makefile, .gitignore, project structure, REPL baseline, docs)*
+- [ ] **Phase 1 — Scanner / Lexer** *(Tokens, lexemes, operators, literals, lookahead)*
+- [ ] **Phase 2 — Expressions & Grammar** *(Recursive descent parser for arithmetic, comparisons, logic)*
+- [ ] **Phase 3 — Abstract Syntax Tree (AST)** *(Tagged unions, tree representations, AST printer)*
+- [ ] **Phase 4 — Tree-Walk Interpreter** *(Runtime evaluation, dynamic typing, truthiness, unary/binary ops)*
+- [ ] **Phase 5 — Statements & State** *(Expression statements, print statements, variable bindings)*
+- [ ] **Phase 6 — Control Flow** *(Branching `if`/`else`, `while`, `for`, short-circuiting logicals)*
+- [ ] **Phase 7 — Functions & Call Stack** *(Function declarations, calls, parameters, return values, call frames)*
+- [ ] **Phase 8 — Scope & Environments** *(Lexical scoping, environment chains, shadowing)*
+- [ ] **Phase 9 — Closures** *(Heap-allocated environments, upvalues, variable lifetimes)*
+- [ ] **Phase 10 — Classes & Objects** *(Classes, instances, fields, methods, `this` binding)*
+- [ ] **Phase 11 — Inheritance** *(Class inheritance, method overriding, `super` dispatch)*
+- [ ] **Phase 12 — Bytecode VM** *(Chunk compilation, bytecode instructions, stack-based VM)*
 
 ---
 
-## Tech Stack
+## 📚 Documentation & Interview Prep
 
-| | |
-|---|---|
-| **Language** | C |
-| **Core Concepts** | Compiler Design · Interpreter · Recursive Descent Parsing · AST |
+- 🏛️ [Architecture & Execution Lifecycle](docs/architecture.md)
+- 📜 [Language Syntax Specification](docs/language-spec.md)
+- 🎯 [Technical Interview Notes & Q&A](docs/interview-notes.md)
 
 ---
 
-<div align="center">
-  <sub>Built from scratch in C · No external libraries · Pure compiler theory in practice</sub>
-</div>
+## 📄 License
+This project is licensed under the [MIT License](LICENSE).

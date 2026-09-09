@@ -1,0 +1,23 @@
+# Binaries & executables
+tulx
+tulx_debug
+*.out
+*.exe
+*.o
+*.a
+*.so
+*.dylib
+
+# Debug symbols
+*.dSYM/
+
+# OS specific
+.DS_Store
+.directory
+Thumbs.db
+
+# IDE / Editor files
+.vscode/
+.idea/
+*.swp
+*~
