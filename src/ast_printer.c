@@ -12,7 +12,7 @@ static char* format(const char* fmt, ...) {
     vsnprintf(buffer, sizeof(buffer), fmt, args);
 
     va_end(args);
-    
+
     size_t len = strlen(buffer);
     char* copy = (char*)malloc(len + 1);
     if (!copy) return NULL;
@@ -21,16 +21,23 @@ static char* format(const char* fmt, ...) {
 }
 
 static void* printLiteral(Expr* expr) {
-    if (expr->as.literal.value == NULL) {
-        return format("nil");
+    Value value = expr->as.literal.value;
+    switch (value.type) {
+        case VAL_NULL:
+            return format("null");
+        case VAL_BOOL:
+            return format(AS_BOOL(value) ? "true" : "false");
+        case VAL_NUMBER:
+            return format("%g", AS_NUMBER(value));
+        case VAL_STRING:
+            return format("\"%s\"", AS_STRING(value));
     }
-    double* value = (double*)expr->as.literal.value;
-    return format("%g", *value);
+    return format("<?>");
 }
 
 static void* printGrouping(Expr* expr) {
     char* inner = (char*)exprAccept(expr->as.grouping.expression, &printer);
-    char* result = format("(group %s)", inner);
+    char* result = format("(group %s)", inner ? inner : "nil");
     free(inner);
     return result;
 }
@@ -40,7 +47,7 @@ static void* printUnary(Expr* expr) {
     char* result = format("(%.*s %s)",
                           expr->as.unary.operator.length,
                           expr->as.unary.operator.start,
-                          right);
+                          right ? right : "nil");
     free(right);
     return result;
 }
@@ -51,8 +58,8 @@ static void* printBinary(Expr* expr) {
     char* result = format("(%.*s %s %s)",
                           expr->as.binary.operator.length,
                           expr->as.binary.operator.start,
-                          left,
-                          right);
+                          left ? left : "nil",
+                          right ? right : "nil");
     free(left);
     free(right);
     return result;
@@ -66,5 +73,6 @@ static ExprVisitor printer = {
 };
 
 char* printExpr(Expr* expr) {
+    if (expr == NULL) return NULL;
     return (char*)exprAccept(expr, &printer);
 }

@@ -2,6 +2,11 @@
 #include "error.h"
 #include "scanner.h"
 #include "token.h"
+#include "parser.h"
+#include "expr.h"
+
+/* Forward declaration for ast printer */
+char* printExpr(Expr* expr);
 
 /* ============================================================================
  * Global Error State
@@ -24,15 +29,50 @@ void error(int line, const char* message) {
 /* ============================================================================
  * Pipeline Execution
  * ============================================================================ */
-static void run(const char* source) {
+
+/* Scanner-only mode for token inspection */
+static void runScannerOnly(const char* source) {
     Scanner scanner = makeScanner(source);
     scanTokens(&scanner);
 
-    /* Phase 0/1: display tokens for verification */
     for (int i = 0; i < scanner.count; i++) {
         printToken(scanner.tokens[i]);
     }
 
+    freeScanner(&scanner);
+}
+
+/* Full pipeline: Scanner -> Parser -> AST */
+static void run(const char* source) {
+    /* 1. Lexical Scanning */
+    Scanner scanner = makeScanner(source);
+    scanTokens(&scanner);
+
+    if (hadError) {
+        freeScanner(&scanner);
+        return;
+    }
+
+    /* 2. Syntactic Parsing (Recursive Descent) */
+    Parser parser = makeParser(scanner.tokens, scanner.count);
+    Expr* expression = parse(&parser);
+
+    /* Stop if there was a syntax/parse error */
+    if (hadError || expression == NULL) {
+        if (expression != NULL) freeExpr(expression);
+        freeScanner(&scanner);
+        return;
+    }
+
+    /* 3. AST Printing / Inspection */
+    char* astRepresentation = printExpr(expression);
+    if (astRepresentation != NULL) {
+        printf("%s\n", astRepresentation);
+        free(astRepresentation);
+    }
+
+    /* 4. Safe Resource Cleanup */
+    freeExpr(expression);
     freeScanner(&scanner);
 }
 
@@ -99,7 +139,7 @@ static char* readFile(const char* path) {
     return buffer;
 }
 
-static void runFile(const char* path) {
+static void runFile(const char* path, bool scanOnly) {
     const char* ext = strrchr(path, '.');
 
     if (!ext || strcmp(ext, ".tul") != 0) {
@@ -108,7 +148,11 @@ static void runFile(const char* path) {
     }
 
     char* source = readFile(path);
-    run(source);
+    if (scanOnly) {
+        runScannerOnly(source);
+    } else {
+        run(source);
+    }
     free(source);
 
     if (hadError) exit(EX_DATAERR);
@@ -123,13 +167,18 @@ int main(int argc, const char* argv[]) {
         repl();
     } else if (argc == 2) {
         if (strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0) {
-            printf("Usage: tulx [script.tul]\n");
+            printf("Usage: tulx [options] [script.tul]\n");
+            printf("Options:\n");
+            printf("  --scan, -s     Run scanner only and print tokens\n");
+            printf("  --help, -h     Show this help message\n");
             printf("Run without arguments to start the interactive REPL.\n");
             return 0;
         }
-        runFile(argv[1]);
+        runFile(argv[1], false);
+    } else if (argc == 3 && (strcmp(argv[1], "--scan") == 0 || strcmp(argv[1], "-s") == 0)) {
+        runFile(argv[2], true);
     } else {
-        fprintf(stderr, "Usage: tulx [script.tul]\n");
+        fprintf(stderr, "Usage: tulx [--scan] [script.tul]\n");
         exit(EX_USAGE);
     }
 

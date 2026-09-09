@@ -87,11 +87,19 @@ Decorated AST / Intermediate Representation (IR)
   6. `unary` -> `primary` (numbers, strings, `(grouping)`)
 * Lower precedence functions call higher precedence functions, ensuring operations with higher precedence are placed deeper in the AST and evaluated first.
 
+### Q12: What is Associativity in Operators?
+* **Left-associative**: Operators evaluated left-to-right (e.g., `5 - 3 - 1` parses as `(5 - 3) - 1 = 1`). Standard for arithmetic (`+`, `-`, `*`, `/`).
+* **Right-associative**: Operators evaluated right-to-left (e.g., assignment `a = b = c` parses as `a = (b = c)`).
+
+### Q13: How does Error Recovery (Synchronization) work in a Parser?
+* When a syntax error occurs, reporting multiple cascading errors can confuse the user.
+* **Panic-Mode Synchronization**: The parser jumps into panic mode upon an error, skips tokens until it finds a statement synchronization boundary (such as a semicolon `;` or a keyword like `class`, `fun`, `var`, `if`, `while`, `print`), and then resumes parsing clean code.
+
 ---
 
 ## 4. C Programming & Memory Management
 
-### Q12: Stack vs Heap Memory — What is the difference?
+### Q14: Stack vs Heap Memory — What is the difference?
 | Feature | Stack Memory | Heap Memory |
 | :--- | :--- | :--- |
 | **Allocation** | Automatic by CPU / compiler on function entry. | Manual via `malloc()`, `calloc()`, `realloc()`. |
@@ -99,7 +107,7 @@ Decorated AST / Intermediate Representation (IR)
 | **Speed** | Extremely fast (pointer decrement/increment). | Slower (search for free chunk, fragmentation). |
 | **Size** | Small (typically 1-8 MB default stack limit). | Large (bounded by physical RAM and virtual memory). |
 
-### Q13: What are Common C Memory Bugs and How Do We Prevent Them?
+### Q15: What are Common C Memory Bugs and How Do We Prevent Them?
 * **Memory Leak**: Allocating heap memory (`malloc`) without later releasing it (`free`).
 * **Dangling Pointer**: Accessing a pointer after the memory it points to has been freed.
 * **Double Free**: Calling `free()` twice on the same pointer.
@@ -109,11 +117,11 @@ Decorated AST / Intermediate Representation (IR)
   * Nullify pointers immediately after `free(ptr); ptr = NULL;`.
   * Compile with AddressSanitizer (`-fsanitize=address,undefined`).
 
-### Q14: What is a Tagged Union in C?
+### Q16: What is a Tagged Union in C?
 * A pattern combining an `enum` (the tag) and a `union` inside a `struct`.
 * Because `union` members share the same memory space, the struct size is only as large as its largest member plus the enum tag.
 * In TUL-X, `Expr` uses a tagged union (`ExprType` + `union { binary, unary, literal, grouping }`) to implement polymorphic AST nodes in pure C without class hierarchies.
 
-### Q15: How is the Visitor Pattern implemented in C?
+### Q17: How is the Visitor Pattern implemented in C?
 * In Java/C++, interfaces and virtual tables (`vtable`) handle dynamic dispatch.
 * In C, we implement a `struct ExprVisitor` containing function pointers (`void* (*visitBinary)(Expr*)`, etc.) and a central dispatch function `exprAccept(Expr* expr, ExprVisitor* visitor)`.

@@ -1,109 +1,168 @@
-#include <stdlib.h>
-#include <stdio.h>
+#include "common.h"
 #include "expr.h"
-#include "token.h"
+#include "value.h"
 
 /*
- * Forward declaration of the visitor.
- * Needed because visitor methods call exprAccept recursively.
+ * Forward declaration of the visitor
  */
 static ExprVisitor interpreter;
 
-/*
- * visitLiteral
- *
- * Java equivalent:
- *   Object visitLiteralExpr(Literal expr)
- */
 static void* evalLiteral(Expr* expr) {
-    /* Literal already stores a value */
-    return expr->as.literal.value;
+    Value* result = (Value*)malloc(sizeof(Value));
+    if (!result) return NULL;
+    *result = expr->as.literal.value;
+    return result;
 }
 
-/*
- * visitGrouping
- *
- * Java equivalent:
- *   Object visitGroupingExpr(Grouping expr)
- */
 static void* evalGrouping(Expr* expr) {
     return exprAccept(expr->as.grouping.expression, &interpreter);
 }
 
-/*
- * visitUnary
- *
- * Java equivalent:
- *   Object visitUnaryExpr(Unary expr)
- */
 static void* evalUnary(Expr* expr) {
-    double* right =
-        (double*)exprAccept(expr->as.unary.right, &interpreter);
+    Value* right = (Value*)exprAccept(expr->as.unary.right, &interpreter);
+    if (!right) return NULL;
 
-    double* result = malloc(sizeof(double));
+    Value* result = (Value*)malloc(sizeof(Value));
+    if (!result) {
+        free(right);
+        return NULL;
+    }
 
     switch (expr->as.unary.operator.type) {
         case TOKEN_MINUS:
-            *result = -(*right);
+            if (IS_NUMBER(*right)) {
+                *result = NUMBER_VAL(-AS_NUMBER(*right));
+            } else {
+                *result = NULL_VAL();
+            }
+            break;
+
+        case TOKEN_BANG:
+            /* truthiness: null and false are falsey, everything else is truthy */
+            if (IS_NULL(*right) || (IS_BOOL(*right) && !AS_BOOL(*right))) {
+                *result = BOOL_VAL(true);
+            } else {
+                *result = BOOL_VAL(false);
+            }
             break;
 
         default:
-            /* unreachable for now */
-            *result = 0;
+            *result = NULL_VAL();
+            break;
     }
 
+    free(right);
     return result;
 }
 
-/*
- * visitBinary
- *
- * Java equivalent:
- *   Object visitBinaryExpr(Binary expr)
- */
 static void* evalBinary(Expr* expr) {
-    double* left =
-        (double*)exprAccept(expr->as.binary.left, &interpreter);
+    Value* left = (Value*)exprAccept(expr->as.binary.left, &interpreter);
+    Value* right = (Value*)exprAccept(expr->as.binary.right, &interpreter);
 
-    double* right =
-        (double*)exprAccept(expr->as.binary.right, &interpreter);
+    if (!left || !right) {
+        if (left) free(left);
+        if (right) free(right);
+        return NULL;
+    }
 
-    double* result = malloc(sizeof(double));
+    Value* result = (Value*)malloc(sizeof(Value));
+    if (!result) {
+        free(left);
+        free(right);
+        return NULL;
+    }
 
     switch (expr->as.binary.operator.type) {
         case TOKEN_PLUS:
-            *result = *left + *right;
+            if (IS_NUMBER(*left) && IS_NUMBER(*right)) {
+                *result = NUMBER_VAL(AS_NUMBER(*left) + AS_NUMBER(*right));
+            } else {
+                *result = NULL_VAL();
+            }
             break;
 
         case TOKEN_MINUS:
-            *result = *left - *right;
+            if (IS_NUMBER(*left) && IS_NUMBER(*right)) {
+                *result = NUMBER_VAL(AS_NUMBER(*left) - AS_NUMBER(*right));
+            } else {
+                *result = NULL_VAL();
+            }
             break;
 
         case TOKEN_STAR:
-            *result = *left * *right;
+            if (IS_NUMBER(*left) && IS_NUMBER(*right)) {
+                *result = NUMBER_VAL(AS_NUMBER(*left) * AS_NUMBER(*right));
+            } else {
+                *result = NULL_VAL();
+            }
             break;
 
         case TOKEN_SLASH:
-            *result = *left / *right;
+            if (IS_NUMBER(*left) && IS_NUMBER(*right)) {
+                *result = NUMBER_VAL(AS_NUMBER(*left) / AS_NUMBER(*right));
+            } else {
+                *result = NULL_VAL();
+            }
+            break;
+
+        case TOKEN_GREATER:
+            if (IS_NUMBER(*left) && IS_NUMBER(*right)) {
+                *result = BOOL_VAL(AS_NUMBER(*left) > AS_NUMBER(*right));
+            } else {
+                *result = BOOL_VAL(false);
+            }
+            break;
+
+        case TOKEN_GREATER_EQUAL:
+            if (IS_NUMBER(*left) && IS_NUMBER(*right)) {
+                *result = BOOL_VAL(AS_NUMBER(*left) >= AS_NUMBER(*right));
+            } else {
+                *result = BOOL_VAL(false);
+            }
+            break;
+
+        case TOKEN_LESS:
+            if (IS_NUMBER(*left) && IS_NUMBER(*right)) {
+                *result = BOOL_VAL(AS_NUMBER(*left) < AS_NUMBER(*right));
+            } else {
+                *result = BOOL_VAL(false);
+            }
+            break;
+
+        case TOKEN_LESS_EQUAL:
+            if (IS_NUMBER(*left) && IS_NUMBER(*right)) {
+                *result = BOOL_VAL(AS_NUMBER(*left) <= AS_NUMBER(*right));
+            } else {
+                *result = BOOL_VAL(false);
+            }
+            break;
+
+        case TOKEN_EQUAL_EQUAL:
+            *result = BOOL_VAL(valuesEqual(*left, *right));
+            break;
+
+        case TOKEN_BANG_EQUAL:
+            *result = BOOL_VAL(!valuesEqual(*left, *right));
             break;
 
         default:
-            /* unreachable for now */
-            *result = 0;
+            *result = NULL_VAL();
+            break;
     }
 
+    free(left);
+    free(right);
     return result;
 }
 
-/*
- * The actual Visitor instance.
- *
- * Java equivalent:
- *   class Interpreter implements Expr.Visitor<Object>
- */
 static ExprVisitor interpreter = {
     .visitBinary   = evalBinary,
     .visitUnary    = evalUnary,
     .visitLiteral  = evalLiteral,
     .visitGrouping = evalGrouping
 };
+
+Value* interpret(Expr* expr) {
+    if (expr == NULL) return NULL;
+    return (Value*)exprAccept(expr, &interpreter);
+}

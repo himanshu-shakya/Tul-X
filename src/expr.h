@@ -2,6 +2,7 @@
 #define TULX_EXPR_H
 
 #include "token.h"
+#include "value.h"
 
 /*
  * Forward declarations
@@ -22,7 +23,7 @@ typedef enum {
 /*
  * Base AST node (tagged union)
  *
- * This is the equivalent of:
+ * This is the C equivalent of:
  *   abstract class Expr { ... }
  */
 struct Expr {
@@ -42,9 +43,9 @@ struct Expr {
             Expr* right;
         } unary;
 
-        /* Literal value: number, string, true, false, nil */
+        /* Literal value: number, string, true, false, null */
         struct {
-            void* value;
+            Value value;
         } literal;
 
         /* Grouping: ( expression ) */
@@ -58,15 +59,12 @@ struct Expr {
  * Visitor interface
  *
  * C equivalent of:
- *
- * interface Visitor<R> {
- *   R visitBinaryExpr(Binary expr);
- *   R visitUnaryExpr(Unary expr);
- *   R visitLiteralExpr(Literal expr);
- *   R visitGroupingExpr(Grouping expr);
- * }
- *
- * Return type is void* to simulate generics.
+ *   interface Visitor<R> {
+ *     R visitBinaryExpr(Binary expr);
+ *     R visitUnaryExpr(Unary expr);
+ *     R visitLiteralExpr(Literal expr);
+ *     R visitGroupingExpr(Grouping expr);
+ *   }
  */
 struct ExprVisitor {
     void* (*visitBinary)(Expr* expr);
@@ -76,19 +74,21 @@ struct ExprVisitor {
 };
 
 /*
- * accept() equivalent
- *
- * Centralized double-dispatch point.
- * This is the ONLY switch on ExprType you need.
+ * Centralized double-dispatch point
  */
 void* exprAccept(Expr* expr, ExprVisitor* visitor);
 
 /*
- * Factory functions (constructors in C)
+ * Factory functions (AST Node Constructors)
  */
 Expr* newBinaryExpr(Expr* left, Token operator, Expr* right);
 Expr* newUnaryExpr(Token operator, Expr* right);
-Expr* newLiteralExpr(void* value);
+Expr* newLiteralExpr(Value value);
 Expr* newGroupingExpr(Expr* expression);
+
+/*
+ * Destructor: Recursively frees an AST expression and all its child nodes
+ */
+void freeExpr(Expr* expr);
 
 #endif /* TULX_EXPR_H */

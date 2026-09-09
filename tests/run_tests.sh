@@ -18,10 +18,15 @@ run_test() {
     local test_name="$1"
     local input_file="$2"
     local expected_status="$3"
+    local extra_flag="$4"
 
     printf "Running %-45s ... " "$test_name"
     set +e
-    $EXECUTABLE "$input_file" > /dev/null 2>&1
+    if [ -n "$extra_flag" ]; then
+        $EXECUTABLE "$extra_flag" "$input_file" > /dev/null 2>&1
+    else
+        $EXECUTABLE "$input_file" > /dev/null 2>&1
+    fi
     local status=$?
     set -e
 
@@ -34,19 +39,26 @@ run_test() {
     fi
 }
 
-# 1. Integration / Example Tests
+# 1. Integration / Example Tests (Scanner test for now)
 if [ -f "examples/hello.tul" ]; then
-    run_test "examples/hello.tul" "examples/hello.tul" 0
+    run_test "examples/hello.tul" "examples/hello.tul" 0 "--scan"
 fi
 
-# 2. Scanner Tests (Expected exit code: 0)
+# 2. Scanner Tests (Expected exit code: 0 with --scan)
 for test_file in tests/scanner/*.tul; do
+    if [ -f "$test_file" ]; then
+        run_test "$test_file" "$test_file" 0 "--scan"
+    fi
+done
+
+# 3. Expression AST Tests (Expected exit code: 0)
+for test_file in tests/expressions/*.tul; do
     if [ -f "$test_file" ]; then
         run_test "$test_file" "$test_file" 0
     fi
 done
 
-# 3. Error Tests (Expected exit code: 65 EX_DATAERR)
+# 4. Error Tests (Expected exit code: 65 EX_DATAERR)
 for test_file in tests/errors/*.tul; do
     if [ -f "$test_file" ]; then
         run_test "$test_file" "$test_file" 65

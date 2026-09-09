@@ -90,8 +90,8 @@ make test
 
 - [x] **Phase 0 — Project Setup** *(Makefile, .gitignore, project structure, REPL baseline, docs)*
 - [x] **Phase 1 — Scanner / Lexer** *(Tokens, lexemes, operators, literals, lookahead)*
-- [ ] **Phase 2 — Expressions & Grammar** *(Recursive descent parser for arithmetic, comparisons, logic)*
-- [ ] **Phase 3 — Abstract Syntax Tree (AST)** *(Tagged unions, tree representations, AST printer)*
+- [x] **Phase 2 — Expressions & Grammar** *(Recursive descent parser for arithmetic, comparisons, logic)*
+- [x] **Phase 3 — Abstract Syntax Tree (AST)** *(Tagged unions, tree representations, AST printer)*
 - [ ] **Phase 4 — Tree-Walk Interpreter** *(Runtime evaluation, dynamic typing, truthiness, unary/binary ops)*
 - [ ] **Phase 5 — Statements & State** *(Expression statements, print statements, variable bindings)*
 - [ ] **Phase 6 — Control Flow** *(Branching `if`/`else`, `while`, `for`, short-circuiting logicals)*
