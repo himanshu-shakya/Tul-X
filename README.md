@@ -102,15 +102,6 @@ make test
 - [ ] **Phase 11 — Inheritance** *(Class inheritance, method overriding, `super` dispatch)*
 - [ ] **Phase 12 — Bytecode VM** *(Chunk compilation, bytecode instructions, stack-based VM)*
 
----
-
-## 📚 Documentation & Interview Prep
-
-- 🏛️ [Architecture & Execution Lifecycle](docs/architecture.md)
-- 📜 [Language Syntax Specification](docs/language-spec.md)
-- 🎯 [Technical Interview Notes & Q&A](docs/interview-notes.md)
-
----
-
 ## 📄 License
 This project is licensed under the [MIT License](LICENSE).
+
