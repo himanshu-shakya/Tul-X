@@ -1,0 +1,11 @@
+var x = "global";
+{
+    var x = "inner";
+    print x;
+    {
+        var x = "innermost";
+        print x;
+    }
+    print x;
+}
+print x;

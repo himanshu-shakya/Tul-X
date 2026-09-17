@@ -11,23 +11,22 @@ typedef struct Expr Expr;
 typedef struct ExprVisitor ExprVisitor;
 
 /*
- * Replaces Java subclasses (Binary, Unary, Literal, Grouping)
+ * Expression types
  */
 typedef enum {
     EXPR_BINARY,
     EXPR_UNARY,
     EXPR_LITERAL,
-    EXPR_GROUPING
+    EXPR_GROUPING,
+    EXPR_VARIABLE,
+    EXPR_ASSIGN
 } ExprType;
 
 /*
  * Base AST node (tagged union)
- *
- * This is the C equivalent of:
- *   abstract class Expr { ... }
  */
 struct Expr {
-    ExprType type;   /* which kind of expression this is */
+    ExprType type;
 
     union {
         /* Binary expression: left operator right */
@@ -52,31 +51,36 @@ struct Expr {
         struct {
             Expr* expression;
         } grouping;
+
+        /* Variable access: name */
+        struct {
+            Token name;
+        } variable;
+
+        /* Variable assignment: name = value */
+        struct {
+            Token name;
+            Expr* value;
+        } assign;
     } as;
 };
 
 /*
  * Visitor interface
- *
- * C equivalent of:
- *   interface Visitor<R> {
- *     R visitBinaryExpr(Binary expr);
- *     R visitUnaryExpr(Unary expr);
- *     R visitLiteralExpr(Literal expr);
- *     R visitGroupingExpr(Grouping expr);
- *   }
  */
 struct ExprVisitor {
-    void* (*visitBinary)(Expr* expr);
-    void* (*visitUnary)(Expr* expr);
-    void* (*visitLiteral)(Expr* expr);
-    void* (*visitGrouping)(Expr* expr);
+    void* (*visitBinary)(Expr* expr, void* context);
+    void* (*visitUnary)(Expr* expr, void* context);
+    void* (*visitLiteral)(Expr* expr, void* context);
+    void* (*visitGrouping)(Expr* expr, void* context);
+    void* (*visitVariable)(Expr* expr, void* context);
+    void* (*visitAssign)(Expr* expr, void* context);
 };
 
 /*
  * Centralized double-dispatch point
  */
-void* exprAccept(Expr* expr, ExprVisitor* visitor);
+void* exprAccept(Expr* expr, ExprVisitor* visitor, void* context);
 
 /*
  * Factory functions (AST Node Constructors)
@@ -85,6 +89,8 @@ Expr* newBinaryExpr(Expr* left, Token operator, Expr* right);
 Expr* newUnaryExpr(Token operator, Expr* right);
 Expr* newLiteralExpr(Value value);
 Expr* newGroupingExpr(Expr* expression);
+Expr* newVariableExpr(Token name);
+Expr* newAssignExpr(Token name, Expr* value);
 
 /*
  * Destructor: Recursively frees an AST expression and all its child nodes

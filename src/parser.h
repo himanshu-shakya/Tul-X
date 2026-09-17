@@ -3,6 +3,7 @@
 
 #include "token.h"
 #include "expr.h"
+#include "stmt.h"
 
 typedef struct {
     Token* tokens;
@@ -11,6 +12,7 @@ typedef struct {
 } Parser;
 
 Parser makeParser(Token* tokens, int count);
-Expr* parse(Parser* parser);
+Stmt** parse(Parser* parser, int* outCount);
+Expr* parseExpressionOnly(Parser* parser);
 
 #endif /* TULX_PARSER_H */

@@ -4,6 +4,10 @@
 #include "token.h"
 #include "parser.h"
 #include "expr.h"
+#include "stmt.h"
+#include "environment.h"
+#include "interpreter.h"
+#include <stdarg.h>
 
 /* Forward declaration for ast printer */
 char* printExpr(Expr* expr);
@@ -26,6 +30,16 @@ void error(int line, const char* message) {
     report(line, "", message);
 }
 
+void runtimeError(Token token, const char* format, ...) {
+    va_list args;
+    va_start(args, format);
+    fprintf(stderr, "[line %d] Runtime Error: ", token.line);
+    vfprintf(stderr, format, args);
+    fprintf(stderr, "\n");
+    va_end(args);
+    hadRuntimeError = true;
+}
+
 /* ============================================================================
  * Pipeline Execution
  * ============================================================================ */
@@ -42,8 +56,32 @@ static void runScannerOnly(const char* source) {
     freeScanner(&scanner);
 }
 
-/* Full pipeline: Scanner -> Parser -> AST */
-static void run(const char* source) {
+/* AST-only mode for syntax tree inspection */
+static void runAstOnly(const char* source) {
+    Scanner scanner = makeScanner(source);
+    scanTokens(&scanner);
+
+    if (hadError) {
+        freeScanner(&scanner);
+        return;
+    }
+
+    Parser parser = makeParser(scanner.tokens, scanner.count);
+    Expr* expression = parseExpressionOnly(&parser);
+    if (expression != NULL) {
+        char* astRepresentation = printExpr(expression);
+        if (astRepresentation != NULL) {
+            printf("%s\n", astRepresentation);
+            free(astRepresentation);
+        }
+        freeExpr(expression);
+    }
+
+    freeScanner(&scanner);
+}
+
+/* Full execution pipeline: Scanner -> Parser -> Interpreter */
+static void run(const char* source, Environment* env, bool isRepl) {
     /* 1. Lexical Scanning */
     Scanner scanner = makeScanner(source);
     scanTokens(&scanner);
@@ -55,24 +93,32 @@ static void run(const char* source) {
 
     /* 2. Syntactic Parsing (Recursive Descent) */
     Parser parser = makeParser(scanner.tokens, scanner.count);
-    Expr* expression = parse(&parser);
+    int stmtCount = 0;
+    Stmt** statements = parse(&parser, &stmtCount);
 
     /* Stop if there was a syntax/parse error */
-    if (hadError || expression == NULL) {
-        if (expression != NULL) freeExpr(expression);
+    if (hadError || statements == NULL) {
+        if (statements != NULL) freeStmtList(statements, stmtCount);
         freeScanner(&scanner);
         return;
     }
 
-    /* 3. AST Printing / Inspection */
-    char* astRepresentation = printExpr(expression);
-    if (astRepresentation != NULL) {
-        printf("%s\n", astRepresentation);
-        free(astRepresentation);
+    /* 3. Runtime Evaluation / Execution */
+    if (isRepl && stmtCount == 1 && statements[0]->type == STMT_EXPR) {
+        /* In REPL mode, evaluate single expression and print result */
+        Value* val = evaluate(statements[0]->as.expr.expression, env);
+        if (val != NULL) {
+            printValue(*val);
+            printf("\n");
+            freeValue(*val);
+            free(val);
+        }
+    } else {
+        interpret(statements, stmtCount, env);
     }
 
     /* 4. Safe Resource Cleanup */
-    freeExpr(expression);
+    freeStmtList(statements, stmtCount);
     freeScanner(&scanner);
 }
 
@@ -81,6 +127,7 @@ static void run(const char* source) {
  * ============================================================================ */
 static void repl(void) {
     char line[1024];
+    Environment* globals = newEnvironment(NULL);
 
     printf("==========================================\n");
     printf("  TUL-X Interpreter (Crafting Interpreters)\n");
@@ -100,9 +147,12 @@ static void repl(void) {
             break;
         }
 
-        run(line);
+        run(line, globals, true);
         hadError = false;
+        hadRuntimeError = false;
     }
+
+    freeEnvironment(globals);
 }
 
 /* ============================================================================
@@ -139,7 +189,7 @@ static char* readFile(const char* path) {
     return buffer;
 }
 
-static void runFile(const char* path, bool scanOnly) {
+static void runFile(const char* path, bool scanOnly, bool astOnly) {
     const char* ext = strrchr(path, '.');
 
     if (!ext || strcmp(ext, ".tul") != 0) {
@@ -150,8 +200,12 @@ static void runFile(const char* path, bool scanOnly) {
     char* source = readFile(path);
     if (scanOnly) {
         runScannerOnly(source);
+    } else if (astOnly) {
+        runAstOnly(source);
     } else {
-        run(source);
+        Environment* globals = newEnvironment(NULL);
+        run(source, globals, false);
+        freeEnvironment(globals);
     }
     free(source);
 
@@ -170,15 +224,23 @@ int main(int argc, const char* argv[]) {
             printf("Usage: tulx [options] [script.tul]\n");
             printf("Options:\n");
             printf("  --scan, -s     Run scanner only and print tokens\n");
+            printf("  --ast, -a      Parse expression and print AST S-expression\n");
             printf("  --help, -h     Show this help message\n");
             printf("Run without arguments to start the interactive REPL.\n");
             return 0;
         }
-        runFile(argv[1], false);
-    } else if (argc == 3 && (strcmp(argv[1], "--scan") == 0 || strcmp(argv[1], "-s") == 0)) {
-        runFile(argv[2], true);
+        runFile(argv[1], false, false);
+    } else if (argc == 3) {
+        if (strcmp(argv[1], "--scan") == 0 || strcmp(argv[1], "-s") == 0) {
+            runFile(argv[2], true, false);
+        } else if (strcmp(argv[1], "--ast") == 0 || strcmp(argv[1], "-a") == 0) {
+            runFile(argv[2], false, true);
+        } else {
+            fprintf(stderr, "Unknown option: %s\n", argv[1]);
+            exit(EX_USAGE);
+        }
     } else {
-        fprintf(stderr, "Usage: tulx [--scan] [script.tul]\n");
+        fprintf(stderr, "Usage: tulx [--scan|--ast] [script.tul]\n");
         exit(EX_USAGE);
     }
 

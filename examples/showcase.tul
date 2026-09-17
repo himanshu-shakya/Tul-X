@@ -1,0 +1,68 @@
+// ==========================================
+//   TUL-X Feature Showcase Demo
+// ==========================================
+
+print "=== 1. Basic Literals & Print Statements ===";
+print "Hello, TUL-X World!";
+print 42.5;
+print true;
+print false;
+print null;
+
+print "";
+print "=== 2. Arithmetic & Precedence ===";
+var a = 10;
+var b = 20;
+var c = 5;
+print "a = 10, b = 20, c = 5";
+print "a + b * c = " + (a + b * c);
+print "(a + b) * c = " + ((a + b) * c);
+print "100 / 4 - 5 = " + (100 / 4 - 5);
+
+print "";
+print "=== 3. Dynamic Types & String Concatenation ===";
+var language = "TUL-X";
+var version = 0.5;
+print "Language: " + language + " (version: " + version + ")";
+print "Boolean concatenation: " + true + " and " + false;
+
+print "";
+print "=== 4. Comparisons & Equality ===";
+print "10 > 5: " + (10 > 5);
+print "10 <= 5: " + (10 <= 5);
+print "10 == 10: " + (10 == 10);
+print "'apple' == 'apple': " + ("apple" == "apple");
+print "'apple' != 'banana': " + ("apple" != "banana");
+
+print "";
+print "=== 5. Variable Mutation & Re-assignment ===";
+var score = 50;
+print "Initial score: " + score;
+score = score + 25;
+print "After bonus (+25): " + score;
+score = score * 2;
+print "After multiplier (*2): " + score;
+
+print "";
+print "=== 6. Lexical Scoping & Variable Shadowing ===";
+var scopeVar = "global";
+print "Outer scope: " + scopeVar;
+{
+    var scopeVar = "inner block 1";
+    var innerOnly = "visible inside block 1";
+    print "Inside block 1: " + scopeVar;
+    print "Inside block 1: " + innerOnly;
+
+    {
+        var scopeVar = "innermost block 2";
+        print "Inside block 2: " + scopeVar;
+    }
+
+    print "Back in block 1: " + scopeVar;
+}
+print "Back in global scope: " + scopeVar;
+
+print "";
+print "==========================================";
+print "  All TUL-X Features Executed Successfully!";
+print "==========================================";

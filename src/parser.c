@@ -5,7 +5,15 @@
 /* ============================================================================
  * Helper Prototypes
  * ============================================================================ */
+static Stmt* declaration(Parser* p);
+static Stmt* varDeclaration(Parser* p);
+static Stmt* statement(Parser* p);
+static Stmt* printStatement(Parser* p);
+static Stmt* block(Parser* p);
+static Stmt* exprStatement(Parser* p);
+
 static Expr* expression(Parser* p);
+static Expr* assignment(Parser* p);
 static Expr* equality(Parser* p);
 static Expr* comparison(Parser* p);
 static Expr* term(Parser* p);
@@ -98,20 +106,155 @@ static char* duplicateString(const char* src) {
 }
 
 /* ============================================================================
- * Grammar Rules (Recursive Descent)
+ * Statement & Declaration Grammar
+ * ============================================================================ */
+
+static Stmt* declaration(Parser* p) {
+    Stmt* stmt = NULL;
+    if (match(p, TOKEN_VAR)) {
+        stmt = varDeclaration(p);
+    } else {
+        stmt = statement(p);
+    }
+
+    if (hadError) {
+        synchronize(p);
+        return NULL;
+    }
+
+    return stmt;
+}
+
+static Stmt* varDeclaration(Parser* p) {
+    Token name = consume(p, TOKEN_IDENTIFIER, "Expect variable name.");
+    if (hadError) return NULL;
+
+    Expr* initializer = NULL;
+    if (match(p, TOKEN_EQUAL)) {
+        initializer = expression(p);
+    }
+
+    consume(p, TOKEN_SEMICOLON, "Expect ';' after variable declaration.");
+    if (hadError) {
+        if (initializer) freeExpr(initializer);
+        return NULL;
+    }
+
+    return newVarStmt(name, initializer);
+}
+
+static Stmt* statement(Parser* p) {
+    if (match(p, TOKEN_PRINT)) {
+        return printStatement(p);
+    }
+    if (match(p, TOKEN_LEFT_BRACE)) {
+        return block(p);
+    }
+    return exprStatement(p);
+}
+
+static Stmt* printStatement(Parser* p) {
+    Expr* value = expression(p);
+    if (value == NULL) return NULL;
+
+    consume(p, TOKEN_SEMICOLON, "Expect ';' after value.");
+    if (hadError) {
+        freeExpr(value);
+        return NULL;
+    }
+
+    return newPrintStmt(value);
+}
+
+static Stmt* block(Parser* p) {
+    int capacity = 8;
+    int count = 0;
+    Stmt** statements = (Stmt**)malloc(capacity * sizeof(Stmt*));
+    if (!statements) {
+        fprintf(stderr, "Out of memory in block parser.\n");
+        exit(EX_SOFTWARE);
+    }
+
+    while (!check(p, TOKEN_RIGHT_BRACE) && !isAtEnd(p)) {
+        Stmt* stmt = declaration(p);
+        if (stmt != NULL) {
+            if (count >= capacity) {
+                capacity *= 2;
+                Stmt** resized = (Stmt**)realloc(statements, capacity * sizeof(Stmt*));
+                if (!resized) {
+                    fprintf(stderr, "Out of memory resizing block statements.\n");
+                    exit(EX_SOFTWARE);
+                }
+                statements = resized;
+            }
+            statements[count++] = stmt;
+        }
+    }
+
+    consume(p, TOKEN_RIGHT_BRACE, "Expect '}' after block.");
+    if (hadError) {
+        freeStmtList(statements, count);
+        return NULL;
+    }
+
+    return newBlockStmt(statements, count);
+}
+
+static Stmt* exprStatement(Parser* p) {
+    Expr* expr = expression(p);
+    if (expr == NULL) return NULL;
+
+    if (match(p, TOKEN_SEMICOLON) || isAtEnd(p)) {
+        return newExprStmt(expr);
+    }
+
+    consume(p, TOKEN_SEMICOLON, "Expect ';' after expression.");
+    if (hadError) {
+        freeExpr(expr);
+        return NULL;
+    }
+
+    return newExprStmt(expr);
+}
+
+/* ============================================================================
+ * Expression Grammar Rules (Recursive Descent)
  *
  * Precedence hierarchy (lowest to highest):
- *   expression -> equality
+ *   expression -> assignment
+ *   assignment -> IDENTIFIER "=" assignment | equality
  *   equality   -> comparison ( ("!=" | "==") comparison )*
  *   comparison -> term ( (">" | ">=" | "<" | "<=") term )*
  *   term       -> factor ( ("-" | "+") factor )*
  *   factor     -> unary ( ("/" | "*") unary )*
  *   unary      -> ("!" | "-") unary | primary
- *   primary    -> NUMBER | STRING | "true" | "false" | "null" | "(" expression ")"
+ *   primary    -> NUMBER | STRING | "true" | "false" | "null" | IDENTIFIER | "(" expression ")"
  * ============================================================================ */
 
 static Expr* expression(Parser* p) {
-    return equality(p);
+    return assignment(p);
+}
+
+static Expr* assignment(Parser* p) {
+    Expr* expr = equality(p);
+
+    if (match(p, TOKEN_EQUAL)) {
+        Token equals = previous(p);
+        Expr* value = assignment(p);
+
+        if (expr != NULL && expr->type == EXPR_VARIABLE) {
+            Token name = expr->as.variable.name;
+            free(expr); /* Free the Expr wrapper shell, Token points into source buffer */
+            return newAssignExpr(name, value);
+        }
+
+        errorAtToken(equals, "Invalid assignment target.");
+        if (value) freeExpr(value);
+        if (expr) freeExpr(expr);
+        return NULL;
+    }
+
+    return expr;
 }
 
 static Expr* equality(Parser* p) {
@@ -209,6 +352,10 @@ static Expr* primary(Parser* p) {
         return newLiteralExpr(STRING_VAL(strCopy));
     }
 
+    if (match(p, TOKEN_IDENTIFIER)) {
+        return newVariableExpr(previous(p));
+    }
+
     if (match(p, TOKEN_LEFT_PAREN)) {
         Expr* expr = expression(p);
         if (expr == NULL) return NULL;
@@ -237,18 +384,53 @@ Parser makeParser(Token* tokens, int count) {
     return p;
 }
 
-Expr* parse(Parser* p) {
-    if (p->count == 0 || isAtEnd(p)) return NULL;
+Stmt** parse(Parser* p, int* outCount) {
+    if (p->count == 0 || isAtEnd(p)) {
+        if (outCount) *outCount = 0;
+        return NULL;
+    }
 
-    Expr* expr = expression(p);
+    int capacity = 8;
+    int count = 0;
+    Stmt** statements = (Stmt**)malloc(capacity * sizeof(Stmt*));
+    if (!statements) {
+        fprintf(stderr, "Out of memory in parser.\n");
+        exit(EX_SOFTWARE);
+    }
 
-    if (hadError) {
-        synchronize(p);
-        if (expr != NULL) {
-            freeExpr(expr);
-            expr = NULL;
+    while (!isAtEnd(p)) {
+        Stmt* stmt = declaration(p);
+        if (stmt != NULL) {
+            if (count >= capacity) {
+                capacity *= 2;
+                Stmt** resized = (Stmt**)realloc(statements, capacity * sizeof(Stmt*));
+                if (!resized) {
+                    fprintf(stderr, "Out of memory resizing statements.\n");
+                    exit(EX_SOFTWARE);
+                }
+                statements = resized;
+            }
+            statements[count++] = stmt;
         }
     }
 
+    if (hadError) {
+        freeStmtList(statements, count);
+        if (outCount) *outCount = 0;
+        return NULL;
+    }
+
+    if (outCount) *outCount = count;
+    return statements;
+}
+
+Expr* parseExpressionOnly(Parser* p) {
+    if (p->count == 0 || isAtEnd(p)) return NULL;
+
+    Expr* expr = expression(p);
+    if (hadError) {
+        if (expr != NULL) freeExpr(expr);
+        return NULL;
+    }
     return expr;
 }

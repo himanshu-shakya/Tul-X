@@ -29,6 +29,18 @@ bool valuesEqual(Value a, Value b) {
     }
 }
 
+Value copyValue(Value value) {
+    if (IS_STRING(value) && AS_STRING(value) != NULL) {
+        size_t len = strlen(AS_STRING(value));
+        char* copy = (char*)malloc(len + 1);
+        if (copy) {
+            memcpy(copy, AS_STRING(value), len + 1);
+            return STRING_VAL(copy);
+        }
+    }
+    return value;
+}
+
 void freeValue(Value value) {
     if (IS_STRING(value) && AS_STRING(value) != NULL) {
         free(AS_STRING(value));

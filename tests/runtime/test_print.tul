@@ -1,0 +1,5 @@
+print "Hello from TUL-X!";
+print 12345;
+print true;
+print false;
+print null;

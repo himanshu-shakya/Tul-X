@@ -39,9 +39,9 @@ run_test() {
     fi
 }
 
-# 1. Integration / Example Tests (Scanner test for now)
+# 1. Integration / Example Tests
 if [ -f "examples/hello.tul" ]; then
-    run_test "examples/hello.tul" "examples/hello.tul" 0 "--scan"
+    run_test "examples/hello.tul" "examples/hello.tul" 0
 fi
 
 # 2. Scanner Tests (Expected exit code: 0 with --scan)
@@ -51,17 +51,31 @@ for test_file in tests/scanner/*.tul; do
     fi
 done
 
-# 3. Expression AST Tests (Expected exit code: 0)
+# 3. Expression AST Tests (Expected exit code: 0 with --ast)
 for test_file in tests/expressions/*.tul; do
+    if [ -f "$test_file" ]; then
+        run_test "$test_file" "$test_file" 0 "--ast"
+    fi
+done
+
+# 4. Runtime & Scoping Tests (Expected exit code: 0)
+for test_file in tests/runtime/*.tul; do
     if [ -f "$test_file" ]; then
         run_test "$test_file" "$test_file" 0
     fi
 done
 
-# 4. Error Tests (Expected exit code: 65 EX_DATAERR)
-for test_file in tests/errors/*.tul; do
+# 5. Syntax / Parse Error Tests (Expected exit code: 65 EX_DATAERR)
+for test_file in tests/errors/test_missing_operand.tul tests/errors/test_unexpected_char.tul tests/errors/test_unmatched_paren.tul tests/errors/test_unterminated_string.tul; do
     if [ -f "$test_file" ]; then
         run_test "$test_file" "$test_file" 65
+    fi
+done
+
+# 6. Runtime Error Tests (Expected exit code: 70 EX_SOFTWARE)
+for test_file in tests/errors/test_undefined_var.tul tests/errors/test_type_error.tul; do
+    if [ -f "$test_file" ]; then
+        run_test "$test_file" "$test_file" 70
     fi
 done
 

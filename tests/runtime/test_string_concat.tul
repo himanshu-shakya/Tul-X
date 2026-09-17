@@ -1,0 +1,6 @@
+var greeting = "Hello, " + "World!";
+print greeting;
+var message = "Score: " + 100;
+print message;
+var numString = 42 + " is the answer";
+print numString;

@@ -1,20 +1,25 @@
 #include "expr.h"
+#include "common.h"
 
 /*
  * Centralized Visitor dispatch
  */
-void* exprAccept(Expr* expr, ExprVisitor* visitor) {
+void* exprAccept(Expr* expr, ExprVisitor* visitor, void* context) {
     if (expr == NULL) return NULL;
 
     switch (expr->type) {
         case EXPR_BINARY:
-            return visitor->visitBinary(expr);
+            return visitor->visitBinary(expr, context);
         case EXPR_UNARY:
-            return visitor->visitUnary(expr);
+            return visitor->visitUnary(expr, context);
         case EXPR_LITERAL:
-            return visitor->visitLiteral(expr);
+            return visitor->visitLiteral(expr, context);
         case EXPR_GROUPING:
-            return visitor->visitGrouping(expr);
+            return visitor->visitGrouping(expr, context);
+        case EXPR_VARIABLE:
+            return visitor->visitVariable(expr, context);
+        case EXPR_ASSIGN:
+            return visitor->visitAssign(expr, context);
     }
 
     return NULL;
@@ -71,6 +76,29 @@ Expr* newGroupingExpr(Expr* expression) {
     return expr;
 }
 
+Expr* newVariableExpr(Token name) {
+    Expr* expr = (Expr*)malloc(sizeof(Expr));
+    if (!expr) {
+        fprintf(stderr, "Out of memory in newVariableExpr.\n");
+        exit(EX_SOFTWARE);
+    }
+    expr->type = EXPR_VARIABLE;
+    expr->as.variable.name = name;
+    return expr;
+}
+
+Expr* newAssignExpr(Token name, Expr* value) {
+    Expr* expr = (Expr*)malloc(sizeof(Expr));
+    if (!expr) {
+        fprintf(stderr, "Out of memory in newAssignExpr.\n");
+        exit(EX_SOFTWARE);
+    }
+    expr->type = EXPR_ASSIGN;
+    expr->as.assign.name = name;
+    expr->as.assign.value = value;
+    return expr;
+}
+
 /*
  * Destructor: Safely and recursively deallocates AST nodes
  */
@@ -93,6 +121,14 @@ void freeExpr(Expr* expr) {
 
         case EXPR_LITERAL:
             freeValue(expr->as.literal.value);
+            break;
+
+        case EXPR_VARIABLE:
+            /* Token points into source buffer, no heap memory to free */
+            break;
+
+        case EXPR_ASSIGN:
+            freeExpr(expr->as.assign.value);
             break;
     }
 

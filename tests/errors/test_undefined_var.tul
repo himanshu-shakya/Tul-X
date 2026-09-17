@@ -1,0 +1,2 @@
+// Attempting to access an undeclared variable
+print undeclared_var;

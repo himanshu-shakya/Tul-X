@@ -35,6 +35,7 @@ typedef struct {
 
 void printValue(Value value);
 bool valuesEqual(Value a, Value b);
+Value copyValue(Value value);
 void freeValue(Value value);
 
 #endif /* TULX_VALUE_H */
