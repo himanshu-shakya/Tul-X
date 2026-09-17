@@ -63,6 +63,46 @@ print "Outer scope: " + scopeVar;
 print "Back in global scope: " + scopeVar;
 
 print "";
+print "=== 7. Logical Operators & Short-Circuiting ===";
+print "true or false: " + (true or false);
+print "false and true: " + (false and true);
+var defaultName = null or "Tul-X User";
+print "Default fallback: " + defaultName;
+
+print "";
+print "=== 8. Conditional Branching (if / else) ===";
+var temperature = 28;
+if (temperature > 30) {
+    print "Weather: Hot";
+} else {
+    if (temperature >= 20) {
+        print "Weather: Pleasant (between 20 and 30)";
+    } else {
+        print "Weather: Cold";
+    }
+}
+
+print "";
+print "=== 9. Loops (while & for) ===";
+print "-- While Loop (Countdown) --";
+var countdown = 3;
+while (countdown > 0) {
+    print "T-minus: " + countdown;
+    countdown = countdown - 1;
+}
+print "Liftoff!";
+
+print "-- For Loop (Fibonacci Series) --";
+var fib1 = 0;
+var fib2 = 1;
+for (var i = 0; i < 7; i = i + 1) {
+    print "Fibonacci(" + i + ") = " + fib1;
+    var next = fib1 + fib2;
+    fib1 = fib2;
+    fib2 = next;
+}
+
+print "";
 print "==========================================";
 print "  All TUL-X Features Executed Successfully!";
 print "==========================================";

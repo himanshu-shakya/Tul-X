@@ -15,7 +15,9 @@ typedef enum {
     STMT_EXPR,
     STMT_PRINT,
     STMT_VAR,
-    STMT_BLOCK
+    STMT_BLOCK,
+    STMT_IF,
+    STMT_WHILE
 } StmtType;
 
 /*
@@ -46,6 +48,19 @@ struct Stmt {
             Stmt** statements;
             int count;
         } block;
+
+        /* Conditional branching: if (condition) thenBranch else elseBranch */
+        struct {
+            Expr* condition;
+            Stmt* thenBranch;
+            Stmt* elseBranch; /* can be NULL if no else */
+        } ifStmt;
+
+        /* While loop: while (condition) body */
+        struct {
+            Expr* condition;
+            Stmt* body;
+        } whileStmt;
     } as;
 };
 
@@ -57,6 +72,8 @@ struct StmtVisitor {
     void (*visitPrint)(Stmt* stmt, void* context);
     void (*visitVar)(Stmt* stmt, void* context);
     void (*visitBlock)(Stmt* stmt, void* context);
+    void (*visitIf)(Stmt* stmt, void* context);
+    void (*visitWhile)(Stmt* stmt, void* context);
 };
 
 /*
@@ -71,6 +88,8 @@ Stmt* newExprStmt(Expr* expression);
 Stmt* newPrintStmt(Expr* expression);
 Stmt* newVarStmt(Token name, Expr* initializer);
 Stmt* newBlockStmt(Stmt** statements, int count);
+Stmt* newIfStmt(Expr* condition, Stmt* thenBranch, Stmt* elseBranch);
+Stmt* newWhileStmt(Expr* condition, Stmt* body);
 
 /*
  * Destructors: Safely deallocate statement nodes

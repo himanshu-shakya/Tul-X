@@ -1,0 +1,30 @@
+// Test: If and Else branching
+var x = 10;
+
+if (x > 5) {
+    print "x is greater than 5";
+} else {
+    print "x is not greater than 5";
+}
+
+if (x < 5) {
+    print "x is less than 5";
+} else {
+    print "x is at least 5";
+}
+
+// Single-branch if (no else)
+var triggered = false;
+if (x == 10) {
+    triggered = true;
+}
+print "Triggered: " + triggered;
+
+// Nested if-else
+if (x >= 10) {
+    if (x == 10) {
+        print "x is exactly 10";
+    } else {
+        print "x is strictly greater than 10";
+    }
+}

@@ -8,12 +8,17 @@
 static Stmt* declaration(Parser* p);
 static Stmt* varDeclaration(Parser* p);
 static Stmt* statement(Parser* p);
+static Stmt* ifStatement(Parser* p);
+static Stmt* whileStatement(Parser* p);
+static Stmt* forStatement(Parser* p);
 static Stmt* printStatement(Parser* p);
 static Stmt* block(Parser* p);
 static Stmt* exprStatement(Parser* p);
 
 static Expr* expression(Parser* p);
 static Expr* assignment(Parser* p);
+static Expr* logicOr(Parser* p);
+static Expr* logicAnd(Parser* p);
 static Expr* equality(Parser* p);
 static Expr* comparison(Parser* p);
 static Expr* term(Parser* p);
@@ -144,13 +149,157 @@ static Stmt* varDeclaration(Parser* p) {
 }
 
 static Stmt* statement(Parser* p) {
+    if (match(p, TOKEN_FOR)) {
+        return forStatement(p);
+    }
+    if (match(p, TOKEN_IF)) {
+        return ifStatement(p);
+    }
     if (match(p, TOKEN_PRINT)) {
         return printStatement(p);
+    }
+    if (match(p, TOKEN_WHILE)) {
+        return whileStatement(p);
     }
     if (match(p, TOKEN_LEFT_BRACE)) {
         return block(p);
     }
     return exprStatement(p);
+}
+
+static Stmt* ifStatement(Parser* p) {
+    consume(p, TOKEN_LEFT_PAREN, "Expect '(' after 'if'.");
+    Expr* condition = expression(p);
+    consume(p, TOKEN_RIGHT_PAREN, "Expect ')' after if condition.");
+
+    if (hadError) {
+        if (condition) freeExpr(condition);
+        return NULL;
+    }
+
+    Stmt* thenBranch = statement(p);
+    if (hadError) {
+        if (condition) freeExpr(condition);
+        if (thenBranch) freeStmt(thenBranch);
+        return NULL;
+    }
+
+    Stmt* elseBranch = NULL;
+    if (match(p, TOKEN_ELSE)) {
+        elseBranch = statement(p);
+        if (hadError) {
+            if (condition) freeExpr(condition);
+            if (thenBranch) freeStmt(thenBranch);
+            if (elseBranch) freeStmt(elseBranch);
+            return NULL;
+        }
+    }
+
+    return newIfStmt(condition, thenBranch, elseBranch);
+}
+
+static Stmt* whileStatement(Parser* p) {
+    consume(p, TOKEN_LEFT_PAREN, "Expect '(' after 'while'.");
+    Expr* condition = expression(p);
+    consume(p, TOKEN_RIGHT_PAREN, "Expect ')' after condition.");
+
+    if (hadError) {
+        if (condition) freeExpr(condition);
+        return NULL;
+    }
+
+    Stmt* body = statement(p);
+    if (hadError) {
+        if (condition) freeExpr(condition);
+        if (body) freeStmt(body);
+        return NULL;
+    }
+
+    return newWhileStmt(condition, body);
+}
+
+static Stmt* forStatement(Parser* p) {
+    consume(p, TOKEN_LEFT_PAREN, "Expect '(' after 'for'.");
+
+    Stmt* initializer = NULL;
+    if (match(p, TOKEN_SEMICOLON)) {
+        initializer = NULL;
+    } else if (match(p, TOKEN_VAR)) {
+        initializer = varDeclaration(p);
+    } else {
+        initializer = exprStatement(p);
+    }
+
+    if (hadError) {
+        if (initializer) freeStmt(initializer);
+        return NULL;
+    }
+
+    Expr* condition = NULL;
+    if (!check(p, TOKEN_SEMICOLON)) {
+        condition = expression(p);
+    }
+    consume(p, TOKEN_SEMICOLON, "Expect ';' after loop condition.");
+
+    if (hadError) {
+        if (initializer) freeStmt(initializer);
+        if (condition) freeExpr(condition);
+        return NULL;
+    }
+
+    Expr* increment = NULL;
+    if (!check(p, TOKEN_RIGHT_PAREN)) {
+        increment = expression(p);
+    }
+    consume(p, TOKEN_RIGHT_PAREN, "Expect ')' after for clauses.");
+
+    if (hadError) {
+        if (initializer) freeStmt(initializer);
+        if (condition) freeExpr(condition);
+        if (increment) freeExpr(increment);
+        return NULL;
+    }
+
+    Stmt* body = statement(p);
+    if (hadError) {
+        if (initializer) freeStmt(initializer);
+        if (condition) freeExpr(condition);
+        if (increment) freeExpr(increment);
+        if (body) freeStmt(body);
+        return NULL;
+    }
+
+    /* Desugar increment: body = { body; increment; } */
+    if (increment != NULL) {
+        Stmt** stmts = (Stmt**)malloc(2 * sizeof(Stmt*));
+        if (!stmts) {
+            fprintf(stderr, "Out of memory in for loop desugaring.\n");
+            exit(EX_SOFTWARE);
+        }
+        stmts[0] = body;
+        stmts[1] = newExprStmt(increment);
+        body = newBlockStmt(stmts, 2);
+    }
+
+    /* Desugar condition: default to true */
+    if (condition == NULL) {
+        condition = newLiteralExpr(BOOL_VAL(true));
+    }
+    body = newWhileStmt(condition, body);
+
+    /* Desugar initializer: body = { initializer; while-loop; } */
+    if (initializer != NULL) {
+        Stmt** stmts = (Stmt**)malloc(2 * sizeof(Stmt*));
+        if (!stmts) {
+            fprintf(stderr, "Out of memory in for loop desugaring.\n");
+            exit(EX_SOFTWARE);
+        }
+        stmts[0] = initializer;
+        stmts[1] = body;
+        body = newBlockStmt(stmts, 2);
+    }
+
+    return body;
 }
 
 static Stmt* printStatement(Parser* p) {
@@ -222,7 +371,9 @@ static Stmt* exprStatement(Parser* p) {
  *
  * Precedence hierarchy (lowest to highest):
  *   expression -> assignment
- *   assignment -> IDENTIFIER "=" assignment | equality
+ *   assignment -> IDENTIFIER "=" assignment | logic_or
+ *   logic_or   -> logic_and ( "or" logic_and )*
+ *   logic_and  -> equality ( "and" equality )*
  *   equality   -> comparison ( ("!=" | "==") comparison )*
  *   comparison -> term ( (">" | ">=" | "<" | "<=") term )*
  *   term       -> factor ( ("-" | "+") factor )*
@@ -236,7 +387,7 @@ static Expr* expression(Parser* p) {
 }
 
 static Expr* assignment(Parser* p) {
-    Expr* expr = equality(p);
+    Expr* expr = logicOr(p);
 
     if (match(p, TOKEN_EQUAL)) {
         Token equals = previous(p);
@@ -252,6 +403,40 @@ static Expr* assignment(Parser* p) {
         if (value) freeExpr(value);
         if (expr) freeExpr(expr);
         return NULL;
+    }
+
+    return expr;
+}
+
+static Expr* logicOr(Parser* p) {
+    Expr* expr = logicAnd(p);
+    if (expr == NULL) return NULL;
+
+    while (match(p, TOKEN_OR)) {
+        Token operator = previous(p);
+        Expr* right = logicAnd(p);
+        if (right == NULL) {
+            freeExpr(expr);
+            return NULL;
+        }
+        expr = newLogicalExpr(expr, operator, right);
+    }
+
+    return expr;
+}
+
+static Expr* logicAnd(Parser* p) {
+    Expr* expr = equality(p);
+    if (expr == NULL) return NULL;
+
+    while (match(p, TOKEN_AND)) {
+        Token operator = previous(p);
+        Expr* right = equality(p);
+        if (right == NULL) {
+            freeExpr(expr);
+            return NULL;
+        }
+        expr = newLogicalExpr(expr, operator, right);
     }
 
     return expr;
