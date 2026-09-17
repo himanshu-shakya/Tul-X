@@ -1,0 +1,20 @@
+// Test: Logical 'and' and 'or' with short-circuiting
+print "true and true: " + (true and true);
+print "true and false: " + (true and false);
+print "false and true: " + (false and true);
+print "false and false: " + (false and false);
+
+print "true or true: " + (true or true);
+print "true or false: " + (true or false);
+print "false or true: " + (false or true);
+print "false or false: " + (false or false);
+
+// Short-circuiting returns operand values
+print "null or 'default': " + (null or "default");
+print "'hello' or 'world': " + ("hello" or "world");
+print "'hello' and 'world': " + ("hello" and "world");
+print "false and 'never': " + (false and "never");
+
+// Combined precedence: and binds tighter than or
+var combined = false or true and true;
+print "false or true and true: " + combined;

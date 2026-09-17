@@ -20,6 +20,12 @@ void stmtAccept(Stmt* stmt, StmtVisitor* visitor, void* context) {
         case STMT_BLOCK:
             visitor->visitBlock(stmt, context);
             break;
+        case STMT_IF:
+            visitor->visitIf(stmt, context);
+            break;
+        case STMT_WHILE:
+            visitor->visitWhile(stmt, context);
+            break;
     }
 }
 
@@ -73,6 +79,31 @@ Stmt* newBlockStmt(Stmt** statements, int count) {
     return stmt;
 }
 
+Stmt* newIfStmt(Expr* condition, Stmt* thenBranch, Stmt* elseBranch) {
+    Stmt* stmt = (Stmt*)malloc(sizeof(Stmt));
+    if (!stmt) {
+        fprintf(stderr, "Out of memory in newIfStmt.\n");
+        exit(EX_SOFTWARE);
+    }
+    stmt->type = STMT_IF;
+    stmt->as.ifStmt.condition = condition;
+    stmt->as.ifStmt.thenBranch = thenBranch;
+    stmt->as.ifStmt.elseBranch = elseBranch;
+    return stmt;
+}
+
+Stmt* newWhileStmt(Expr* condition, Stmt* body) {
+    Stmt* stmt = (Stmt*)malloc(sizeof(Stmt));
+    if (!stmt) {
+        fprintf(stderr, "Out of memory in newWhileStmt.\n");
+        exit(EX_SOFTWARE);
+    }
+    stmt->type = STMT_WHILE;
+    stmt->as.whileStmt.condition = condition;
+    stmt->as.whileStmt.body = body;
+    return stmt;
+}
+
 /*
  * Destructors: Safely and recursively free statement nodes
  */
@@ -93,6 +124,21 @@ void freeStmt(Stmt* stmt) {
             break;
         case STMT_BLOCK:
             freeStmtList(stmt->as.block.statements, stmt->as.block.count);
+            break;
+        case STMT_IF:
+            freeExpr(stmt->as.ifStmt.condition);
+            if (stmt->as.ifStmt.thenBranch != NULL) {
+                freeStmt(stmt->as.ifStmt.thenBranch);
+            }
+            if (stmt->as.ifStmt.elseBranch != NULL) {
+                freeStmt(stmt->as.ifStmt.elseBranch);
+            }
+            break;
+        case STMT_WHILE:
+            freeExpr(stmt->as.whileStmt.condition);
+            if (stmt->as.whileStmt.body != NULL) {
+                freeStmt(stmt->as.whileStmt.body);
+            }
             break;
     }
 

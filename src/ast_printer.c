@@ -69,6 +69,20 @@ static void* printBinary(Expr* expr, void* context) {
     return result;
 }
 
+static void* printLogical(Expr* expr, void* context) {
+    (void)context;
+    char* left = (char*)exprAccept(expr->as.logical.left, &printer, NULL);
+    char* right = (char*)exprAccept(expr->as.logical.right, &printer, NULL);
+    char* result = format("(%.*s %s %s)",
+                          expr->as.logical.operator.length,
+                          expr->as.logical.operator.start,
+                          left ? left : "nil",
+                          right ? right : "nil");
+    free(left);
+    free(right);
+    return result;
+}
+
 static void* printVariable(Expr* expr, void* context) {
     (void)context;
     return format("%.*s", expr->as.variable.name.length, expr->as.variable.name.start);
@@ -87,6 +101,7 @@ static void* printAssign(Expr* expr, void* context) {
 
 static ExprVisitor printer = {
     .visitBinary   = printBinary,
+    .visitLogical  = printLogical,
     .visitUnary    = printUnary,
     .visitLiteral  = printLiteral,
     .visitGrouping = printGrouping,

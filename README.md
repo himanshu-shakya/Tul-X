@@ -228,7 +228,7 @@ Token streams grow geometrically (`capacity = capacity * 2`), providing **$O(1)$
 - [x] **Phase 3 — Abstract Syntax Tree (AST)** *(Tagged unions, AST node constructors, S-expression pretty printer)*
 - [x] **Phase 4 — Tree-Walk Interpreter** *(Runtime evaluation, dynamic typing, truthiness, unary/binary ops, string concat)*
 - [x] **Phase 5 — Statements & State** *(Expression statements, print statements, variable bindings, assignment)*
-- [ ] **Phase 6 — Control Flow** *(Branching `if`/`else`, `while`, `for`, short-circuiting logicals)*
+- [x] **Phase 6 — Control Flow** *(Branching `if`/`else`, `while`, `for`, short-circuiting logicals `and`/`or`)*
 - [ ] **Phase 7 — Functions & Call Frames** *(Function declarations, calls, parameter binding, return values)*
 - [x] **Phase 8 — Lexical Scope & Environments** *(Environment chain, block statements `{ ... }`, variable shadowing)*
 - [ ] **Phase 9 — Closures** *(Heap-allocated upvalues, captured variable lifetimes)*
@@ -246,6 +246,7 @@ Token streams grow geometrically (`capacity = capacity * 2`), providing **$O(1)$
 | **Expression Tests** | Arithmetic, comparisons, logicals, grouping, operator precedence (`--ast`) | `PASSED` ✅ |
 | **Runtime & State** | Variables (`var`), assignment (`=`), `print`, string concatenation | `PASSED` ✅ |
 | **Lexical Scoping** | Block scoping (`{ ... }`), nested environments, shadowing | `PASSED` ✅ |
+| **Control Flow** | Conditionals (`if`/`else`), loops (`while`, `for`), logicals (`and`/`or`) | `PASSED` ✅ |
 | **Error Handling** | Syntax errors (exit `65`), runtime undefined variables / type errors (exit `70`) | `PASSED` ✅ |
 | **Memory Sanitizer** | Valgrind / LLVM AddressSanitizer & UndefinedBehaviorSanitizer | `ZERO LEAKS` 🛡️ |
 

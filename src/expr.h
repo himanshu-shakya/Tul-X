@@ -15,6 +15,7 @@ typedef struct ExprVisitor ExprVisitor;
  */
 typedef enum {
     EXPR_BINARY,
+    EXPR_LOGICAL,
     EXPR_UNARY,
     EXPR_LITERAL,
     EXPR_GROUPING,
@@ -35,6 +36,13 @@ struct Expr {
             Token operator;
             Expr* right;
         } binary;
+
+        /* Logical expression: left operator right (short-circuiting and / or) */
+        struct {
+            Expr* left;
+            Token operator;
+            Expr* right;
+        } logical;
 
         /* Unary expression: operator right */
         struct {
@@ -70,6 +78,7 @@ struct Expr {
  */
 struct ExprVisitor {
     void* (*visitBinary)(Expr* expr, void* context);
+    void* (*visitLogical)(Expr* expr, void* context);
     void* (*visitUnary)(Expr* expr, void* context);
     void* (*visitLiteral)(Expr* expr, void* context);
     void* (*visitGrouping)(Expr* expr, void* context);
@@ -86,6 +95,7 @@ void* exprAccept(Expr* expr, ExprVisitor* visitor, void* context);
  * Factory functions (AST Node Constructors)
  */
 Expr* newBinaryExpr(Expr* left, Token operator, Expr* right);
+Expr* newLogicalExpr(Expr* left, Token operator, Expr* right);
 Expr* newUnaryExpr(Token operator, Expr* right);
 Expr* newLiteralExpr(Value value);
 Expr* newGroupingExpr(Expr* expression);

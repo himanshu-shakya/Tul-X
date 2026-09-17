@@ -7,6 +7,16 @@ static ExprVisitor exprVisitor;
 static StmtVisitor stmtVisitor;
 
 /* ============================================================================
+ * Helper Functions
+ * ============================================================================ */
+
+static bool isTruthy(Value val) {
+    if (IS_NULL(val)) return false;
+    if (IS_BOOL(val)) return AS_BOOL(val);
+    return true;
+}
+
+/* ============================================================================
  * Expression Evaluation
  * ============================================================================ */
 
@@ -56,6 +66,22 @@ static void* evalAssign(Expr* expr, void* context) {
     return val;
 }
 
+static void* evalLogical(Expr* expr, void* context) {
+    Value* left = (Value*)exprAccept(expr->as.logical.left, &exprVisitor, context);
+    if (!left) return NULL;
+
+    if (expr->as.logical.operator.type == TOKEN_OR) {
+        if (isTruthy(*left)) return left;
+    } else { /* TOKEN_AND */
+        if (!isTruthy(*left)) return left;
+    }
+
+    freeValue(*left);
+    free(left);
+
+    return exprAccept(expr->as.logical.right, &exprVisitor, context);
+}
+
 static void* evalUnary(Expr* expr, void* context) {
     Value* right = (Value*)exprAccept(expr->as.unary.right, &exprVisitor, context);
     if (!right) return NULL;
@@ -81,8 +107,7 @@ static void* evalUnary(Expr* expr, void* context) {
 
         case TOKEN_BANG: {
             /* Truthiness: null and false are falsey, everything else is truthy */
-            bool isFalsey = IS_NULL(*right) || (IS_BOOL(*right) && !AS_BOOL(*right));
-            *result = BOOL_VAL(isFalsey);
+            *result = BOOL_VAL(!isTruthy(*right));
             break;
         }
 
@@ -256,6 +281,7 @@ static void* evalBinary(Expr* expr, void* context) {
 
 static ExprVisitor exprVisitor = {
     .visitBinary   = evalBinary,
+    .visitLogical  = evalLogical,
     .visitUnary    = evalUnary,
     .visitLiteral  = evalLiteral,
     .visitGrouping = evalGrouping,
@@ -315,11 +341,44 @@ static void execBlock(Stmt* stmt, void* context) {
     freeEnvironment(blockEnv);
 }
 
+static void execIf(Stmt* stmt, void* context) {
+    Value* val = (Value*)exprAccept(stmt->as.ifStmt.condition, &exprVisitor, context);
+    if (val == NULL) return;
+
+    bool conditionMet = isTruthy(*val);
+    freeValue(*val);
+    free(val);
+
+    if (conditionMet) {
+        stmtAccept(stmt->as.ifStmt.thenBranch, &stmtVisitor, context);
+    } else if (stmt->as.ifStmt.elseBranch != NULL) {
+        stmtAccept(stmt->as.ifStmt.elseBranch, &stmtVisitor, context);
+    }
+}
+
+static void execWhile(Stmt* stmt, void* context) {
+    for (;;) {
+        Value* val = (Value*)exprAccept(stmt->as.whileStmt.condition, &exprVisitor, context);
+        if (val == NULL) break;
+
+        bool conditionMet = isTruthy(*val);
+        freeValue(*val);
+        free(val);
+
+        if (!conditionMet) break;
+
+        stmtAccept(stmt->as.whileStmt.body, &stmtVisitor, context);
+        if (hadRuntimeError) break;
+    }
+}
+
 static StmtVisitor stmtVisitor = {
     .visitExpr  = execExpr,
     .visitPrint = execPrint,
     .visitVar   = execVar,
-    .visitBlock = execBlock
+    .visitBlock = execBlock,
+    .visitIf    = execIf,
+    .visitWhile = execWhile
 };
 
 /* ============================================================================

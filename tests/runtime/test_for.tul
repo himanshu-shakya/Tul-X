@@ -1,0 +1,22 @@
+// Test: For loops (Desugared)
+var total = 0;
+for (var i = 0; i < 5; i = i + 1) {
+    total = total + i;
+}
+print "For total: " + total;
+
+// Fibonacci sequence with for loop
+var a = 0;
+var b = 1;
+for (var i = 0; i < 8; i = i + 1) {
+    print "Fib: " + a;
+    var temp = a;
+    a = b;
+    b = temp + b;
+}
+
+// For loop with external variable
+var j = 0;
+for (; j < 3; j = j + 1) {
+    print "External j: " + j;
+}

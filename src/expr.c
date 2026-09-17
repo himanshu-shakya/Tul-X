@@ -10,6 +10,8 @@ void* exprAccept(Expr* expr, ExprVisitor* visitor, void* context) {
     switch (expr->type) {
         case EXPR_BINARY:
             return visitor->visitBinary(expr, context);
+        case EXPR_LOGICAL:
+            return visitor->visitLogical(expr, context);
         case EXPR_UNARY:
             return visitor->visitUnary(expr, context);
         case EXPR_LITERAL:
@@ -39,6 +41,19 @@ Expr* newBinaryExpr(Expr* left, Token operator, Expr* right) {
     expr->as.binary.left = left;
     expr->as.binary.operator = operator;
     expr->as.binary.right = right;
+    return expr;
+}
+
+Expr* newLogicalExpr(Expr* left, Token operator, Expr* right) {
+    Expr* expr = (Expr*)malloc(sizeof(Expr));
+    if (!expr) {
+        fprintf(stderr, "Out of memory in newLogicalExpr.\n");
+        exit(EX_SOFTWARE);
+    }
+    expr->type = EXPR_LOGICAL;
+    expr->as.logical.left = left;
+    expr->as.logical.operator = operator;
+    expr->as.logical.right = right;
     return expr;
 }
 
@@ -109,6 +124,11 @@ void freeExpr(Expr* expr) {
         case EXPR_BINARY:
             freeExpr(expr->as.binary.left);
             freeExpr(expr->as.binary.right);
+            break;
+
+        case EXPR_LOGICAL:
+            freeExpr(expr->as.logical.left);
+            freeExpr(expr->as.logical.right);
             break;
 
         case EXPR_UNARY:

@@ -1,0 +1,19 @@
+// Test: While loops
+var count = 0;
+var sum = 0;
+
+while (count < 5) {
+    sum = sum + count;
+    count = count + 1;
+}
+
+print "Final count: " + count;
+print "Final sum: " + sum;
+
+// Countdown loop
+var n = 3;
+while (n > 0) {
+    print "Countdown: " + n;
+    n = n - 1;
+}
+print "Liftoff!";
